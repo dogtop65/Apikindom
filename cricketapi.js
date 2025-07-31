@@ -8,7 +8,7 @@ app.get('/matches', async (req, res) => {
     const response = await axios.get('https://cricbuzz-cricket.p.rapidapi.com/matches/v1/recent', {
       headers: {
         'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com',
-        'x-rapidapi-key': '48851c0f11msh8e91915851f35d4p17ca9cjsn7d03483aea2a'
+        'x-rapidapi-key': 'db37666c95mshafc4270226b9c42p1db5f7jsn236c02743460'
       }
     });
 
