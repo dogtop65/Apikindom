@@ -1,32 +1,52 @@
 const express = require('express');
 const axios = require('axios');
+const fs = require('fs');
 const app = express();
 
-// Render ke liye dynamic port
 const PORT = process.env.PORT || 3000;
 
-// Home Route
+// ✅ Load keys from keys.json
+let apiKeys = [];
+try {
+  apiKeys = JSON.parse(fs.readFileSync('./keys.json', 'utf8'));
+} catch (err) {
+  console.error('❌ Failed to load API keys:', err.message);
+  process.exit(1);
+}
+
+// ✅ Home route
 app.get('/', (req, res) => {
-  res.send('Welcome to Termux + Express + Render Cricket API Backend!');
+  res.send('✅ Welcome to Termux + Express + Render Cricket API Backend!');
 });
 
-// Cricket Matches Route (from RapidAPI)
+// ✅ Match route with smart API key rotation
 app.get('/matches', async (req, res) => {
-  try {
-    const response = await axios.get('https://cricbuzz-cricket.p.rapidapi.com/matches/v1/recent', {
-      headers: {
-        'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com',
-        'x-rapidapi-key': 'db37666c95mshafc4270226b9c42p1db5f7jsn236c02743460'
-      }
-    });
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error fetching matches:', error.message);
-    res.status(500).json({ error: 'Failed to fetch data from RapidAPI' });
+  const url = 'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/recent';
+  let lastError = null;
+
+  for (let i = 0; i < apiKeys.length; i++) {
+    const key = apiKeys[i];
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com',
+          'x-rapidapi-key': key
+        }
+      });
+      console.log(`✅ Success using key ${i + 1}`);
+      return res.json(response.data);
+    } catch (err) {
+      lastError = err;
+      console.warn(`⚠️ Key ${i + 1} failed: ${err.response?.status || err.message}`);
+    }
   }
+
+  // ❌ All keys failed
+  console.error('❌ All API keys exhausted or failed');
+  res.status(500).json({ error: 'All API keys failed. Try again later.' });
 });
 
-// Start Server
+// ✅ Start server
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
