@@ -19,13 +19,14 @@ app.get('/', (req, res) => {
   res.send('✅ Welcome to Termux + Express + Render Cricket API Backend!');
 });
 
-// ✅ Combined Live + Upcoming Matches (filtered & sorted)
+// ✅ Matches API — excludes all already started matches (even 1s old)
 app.get('/matches', async (req, res) => {
   const endpoints = [
     'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live',
     'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/upcoming'
   ];
 
+  const now = Date.now(); // ✅ Current time in millis
   let lastError = null;
 
   for (let i = 0; i < apiKeys.length; i++) {
@@ -55,20 +56,20 @@ app.get('/matches', async (req, res) => {
             const wrapper = series.seriesAdWrapper;
             if (!wrapper || !Array.isArray(wrapper.matches)) return;
 
-            // ❌ Filter out completed matches
-            const validMatches = wrapper.matches.filter(
-              match => match.matchInfo?.state !== 'Complete'
-            );
+            const validMatches = wrapper.matches.filter(match => {
+              const matchInfo = match.matchInfo;
+              if (!matchInfo || matchInfo.state === 'Complete') return false;
 
-            // ✅ Push all valid matches to flat array
-            validMatches.forEach(match => {
-              allMatches.push(match);
+              const startTime = parseInt(matchInfo.startDate);
+              return startTime > now; // ✅ Only include if start time is in future
             });
+
+            allMatches.push(...validMatches);
           });
         });
       });
 
-      // ✅ Sort matches by startDate ascending
+      // ✅ Sort upcoming matches by soonest first
       allMatches.sort((a, b) => {
         return parseInt(a.matchInfo.startDate) - parseInt(b.matchInfo.startDate);
       });
