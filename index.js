@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
 
 // ✅ Match route with smart API key rotation
 app.get('/matches', async (req, res) => {
-  const url = 'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/recent';
+  const url = 'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/upcoming';
   let lastError = null;
 
   for (let i = 0; i < apiKeys.length; i++) {
