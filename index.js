@@ -19,7 +19,7 @@ app.get('/', (req, res) => {
   res.send('✅ Welcome to Termux + Express + Render Cricket API Backend!');
 });
 
-// ✅ Combined Live + Upcoming Matches (filtered)
+// ✅ Combined Live + Upcoming Matches (filtered & sorted)
 app.get('/matches', async (req, res) => {
   const endpoints = [
     'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live',
@@ -45,43 +45,35 @@ app.get('/matches', async (req, res) => {
       console.log(`✅ Success using key ${i + 1}`);
 
       const combined = [liveResponse.data, upcomingResponse.data];
-      const filteredTypeMatches = [];
+      const allMatches = [];
 
       combined.forEach(data => {
         if (!data?.typeMatches) return;
 
         data.typeMatches.forEach(type => {
-          const seriesMatches = [];
-
           type.seriesMatches.forEach(series => {
             const wrapper = series.seriesAdWrapper;
             if (!wrapper || !Array.isArray(wrapper.matches)) return;
 
-            // ❌ Skip completed matches
+            // ❌ Filter out completed matches
             const validMatches = wrapper.matches.filter(
               match => match.matchInfo?.state !== 'Complete'
             );
 
-            if (validMatches.length > 0) {
-              seriesMatches.push({
-                seriesAdWrapper: {
-                  ...wrapper,
-                  matches: validMatches
-                }
-              });
-            }
-          });
-
-          if (seriesMatches.length > 0) {
-            filteredTypeMatches.push({
-              matchType: type.matchType,
-              seriesMatches
+            // ✅ Push all valid matches to flat array
+            validMatches.forEach(match => {
+              allMatches.push(match);
             });
-          }
+          });
         });
       });
 
-      return res.json({ typeMatches: filteredTypeMatches });
+      // ✅ Sort matches by startDate ascending
+      allMatches.sort((a, b) => {
+        return parseInt(a.matchInfo.startDate) - parseInt(b.matchInfo.startDate);
+      });
+
+      return res.json({ matches: allMatches });
 
     } catch (err) {
       lastError = err;
