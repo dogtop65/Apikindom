@@ -5,7 +5,7 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-// ✅ Load keys from keys.json
+// ✅ Load API keys from keys.json
 let apiKeys = [];
 try {
   apiKeys = JSON.parse(fs.readFileSync('./keys.json', 'utf8'));
@@ -19,22 +19,34 @@ app.get('/', (req, res) => {
   res.send('✅ Welcome to Termux + Express + Render Cricket API Backend!');
 });
 
-// ✅ Match route with smart API key rotation
+// ✅ Combined Live + Upcoming Matches
 app.get('/matches', async (req, res) => {
-  const url = 'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/upcoming';
+  const endpoints = [
+    'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live',
+    'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/upcoming'
+  ];
+
   let lastError = null;
 
   for (let i = 0; i < apiKeys.length; i++) {
     const key = apiKeys[i];
     try {
-      const response = await axios.get(url, {
-        headers: {
-          'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com',
-          'x-rapidapi-key': key
-        }
-      });
+      const [liveResponse, upcomingResponse] = await Promise.all(
+        endpoints.map(url =>
+          axios.get(url, {
+            headers: {
+              'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com',
+              'x-rapidapi-key': key
+            }
+          })
+        )
+      );
+
       console.log(`✅ Success using key ${i + 1}`);
-      return res.json(response.data);
+      return res.json({
+        live: liveResponse.data,
+        upcoming: upcomingResponse.data
+      });
     } catch (err) {
       lastError = err;
       console.warn(`⚠️ Key ${i + 1} failed: ${err.response?.status || err.message}`);
@@ -42,7 +54,7 @@ app.get('/matches', async (req, res) => {
   }
 
   // ❌ All keys failed
-  console.error('❌ All API keys exhausted or failed');
+  console.error('❌ All API keys failed');
   res.status(500).json({ error: 'All API keys failed. Try again later.' });
 });
 
