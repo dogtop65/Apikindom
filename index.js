@@ -19,7 +19,7 @@ app.get('/', (req, res) => {
   res.send('✅ Welcome to Termux + Express + Render Cricket API Backend!');
 });
 
-// ✅ Combined Live + Upcoming Matches
+// ✅ Combined Live + Upcoming Matches (filtered)
 app.get('/matches', async (req, res) => {
   const endpoints = [
     'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live',
@@ -43,17 +43,52 @@ app.get('/matches', async (req, res) => {
       );
 
       console.log(`✅ Success using key ${i + 1}`);
-      return res.json({
-        live: liveResponse.data,
-        upcoming: upcomingResponse.data
+
+      const combined = [liveResponse.data, upcomingResponse.data];
+      const filteredTypeMatches = [];
+
+      combined.forEach(data => {
+        if (!data?.typeMatches) return;
+
+        data.typeMatches.forEach(type => {
+          const seriesMatches = [];
+
+          type.seriesMatches.forEach(series => {
+            const wrapper = series.seriesAdWrapper;
+            if (!wrapper || !Array.isArray(wrapper.matches)) return;
+
+            // ❌ Skip completed matches
+            const validMatches = wrapper.matches.filter(
+              match => match.matchInfo?.state !== 'Complete'
+            );
+
+            if (validMatches.length > 0) {
+              seriesMatches.push({
+                seriesAdWrapper: {
+                  ...wrapper,
+                  matches: validMatches
+                }
+              });
+            }
+          });
+
+          if (seriesMatches.length > 0) {
+            filteredTypeMatches.push({
+              matchType: type.matchType,
+              seriesMatches
+            });
+          }
+        });
       });
+
+      return res.json({ typeMatches: filteredTypeMatches });
+
     } catch (err) {
       lastError = err;
       console.warn(`⚠️ Key ${i + 1} failed: ${err.response?.status || err.message}`);
     }
   }
 
-  // ❌ All keys failed
   console.error('❌ All API keys failed');
   res.status(500).json({ error: 'All API keys failed. Try again later.' });
 });
