@@ -2,14 +2,14 @@
   "ESTONIA_VS_SWITZERLAND": [
     {
       "prize": "₹10,000",
-      "entryFee": "₹49",
+      "entryFee": "₹4",
       "totalSpots": 500,
       "spotsLeft": 150,
       "tags": ["Guaranteed", "Bonus Entry"]
     },
     {
       "prize": "₹5,000",
-      "entryFee": "₹29",
+      "entryFee": "₹2",
       "totalSpots": 1000,
       "spotsLeft": 250,
       "tags": ["Guaranteed", "Bonus Entry"]
@@ -18,7 +18,7 @@
   "INDIA_VS_AUSTRALIA": [
     {
       "prize": "₹25,000",
-      "entryFee": "₹99",
+      "entryFee": "₹9",
       "totalSpots": 200,
       "spotsLeft": 20,
       "tags": ["Mega", "Guaranteed"]
