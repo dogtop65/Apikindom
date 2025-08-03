@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
+const path = require('path');
 const app = express();
 
 const PORT = process.env.PORT || 3000;
@@ -8,7 +9,8 @@ const PORT = process.env.PORT || 3000;
 // ✅ Load API keys
 let apiKeys = [];
 try {
-  apiKeys = JSON.parse(fs.readFileSync('./keys.json', 'utf8'));
+  const keysPath = path.resolve(__dirname, 'keys.json');
+  apiKeys = JSON.parse(fs.readFileSync(keysPath, 'utf8'));
 } catch (err) {
   console.error('❌ Failed to load API keys:', err.message);
   process.exit(1);
@@ -16,7 +18,7 @@ try {
 
 // ✅ Home route
 app.get('/', (req, res) => {
-  res.send('✅ Welcome to Termux + Express + Render Cricket API Backend!');
+  res.send('✅ Welcome to Express + Render Fantasy Sports Backend!');
 });
 
 // ✅ Matches API — future matches only
@@ -69,7 +71,6 @@ app.get('/matches', async (req, res) => {
         });
       });
 
-      // ✅ Sort by nearest start time
       allMatches.sort((a, b) => {
         return parseInt(a.matchInfo.startDate) - parseInt(b.matchInfo.startDate);
       });
@@ -86,16 +87,19 @@ app.get('/matches', async (req, res) => {
   res.status(500).json({ error: 'All API keys failed. Try again later.' });
 });
 
-// ✅ Contest API — get contests for a match by key (like india_vs_australia)
-app.get('/contests/:matchKey', (req, res) => {
+// ✅ Contest API — fetch contests using matchId
+app.get('/contests/:matchId', (req, res) => {
   try {
-    const matchKey = req.params.matchKey.toUpperCase().replace(/\s+/g, '_');
-    const contestData = JSON.parse(fs.readFileSync('./Contest.json', 'utf8'));
+    const matchId = req.params.matchId; // e.g. 74858 or "14593"
 
-    if (contestData[matchKey]) {
-      res.json({ contests: contestData[matchKey] });
+    const contestFilePath = path.resolve(__dirname, 'Contest.json');
+    const contestData = JSON.parse(fs.readFileSync(contestFilePath, 'utf8'));
+
+    console.log('📥 matchId requested:', matchId);
+    if (contestData[matchId]) {
+      return res.json({ contests: contestData[matchId] });
     } else {
-      res.status(404).json({ error: `No contests found for matchKey: ${matchKey}` });
+      return res.status(404).json({ error: `No contests found for matchId: ${matchId}` });
     }
   } catch (err) {
     console.error('❌ Error loading Contest.json:', err.message);
