@@ -5,7 +5,7 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-// ✅ Load API keys from keys.json
+// ✅ Load API keys
 let apiKeys = [];
 try {
   apiKeys = JSON.parse(fs.readFileSync('./keys.json', 'utf8'));
@@ -19,7 +19,7 @@ app.get('/', (req, res) => {
   res.send('✅ Welcome to Termux + Express + Render Cricket API Backend!');
 });
 
-// ✅ Matches API — Only Future Matches (filter + sort)
+// ✅ Matches API — future matches only
 app.get('/matches', async (req, res) => {
   const endpoints = [
     'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live',
@@ -61,7 +61,7 @@ app.get('/matches', async (req, res) => {
               if (!matchInfo || matchInfo.state === 'Complete') return false;
 
               const startTime = parseInt(matchInfo.startDate);
-              return startTime > now; // ✅ Only future matches
+              return startTime > now;
             });
 
             allMatches.push(...validMatches);
@@ -69,7 +69,7 @@ app.get('/matches', async (req, res) => {
         });
       });
 
-      // ✅ Sort ascending by time
+      // ✅ Sort by nearest start time
       allMatches.sort((a, b) => {
         return parseInt(a.matchInfo.startDate) - parseInt(b.matchInfo.startDate);
       });
@@ -86,10 +86,10 @@ app.get('/matches', async (req, res) => {
   res.status(500).json({ error: 'All API keys failed. Try again later.' });
 });
 
-// ✅ Contest API for a specific match (Dream11 style)
+// ✅ Contest API — get contests for a match by key (like india_vs_australia)
 app.get('/contests/:matchKey', (req, res) => {
   try {
-    const matchKey = req.params.matchKey.toUpperCase();
+    const matchKey = req.params.matchKey.toUpperCase().replace(/\s+/g, '_');
     const contestData = JSON.parse(fs.readFileSync('./Contest.json', 'utf8'));
 
     if (contestData[matchKey]) {
