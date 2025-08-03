@@ -2,8 +2,8 @@ const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const app = express();
 
+const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ✅ Load API keys
@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
   res.send('✅ Welcome to Express + Render Fantasy Sports Backend!');
 });
 
-// ✅ Matches API — future matches only
+// ✅ Matches API — only upcoming & live
 app.get('/matches', async (req, res) => {
   const endpoints = [
     'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live',
@@ -46,7 +46,6 @@ app.get('/matches', async (req, res) => {
       );
 
       console.log(`✅ Success using key ${i + 1}`);
-
       const combined = [liveResponse.data, upcomingResponse.data];
       const allMatches = [];
 
@@ -61,7 +60,6 @@ app.get('/matches', async (req, res) => {
             const validMatches = wrapper.matches.filter(match => {
               const matchInfo = match.matchInfo;
               if (!matchInfo || matchInfo.state === 'Complete') return false;
-
               const startTime = parseInt(matchInfo.startDate);
               return startTime > now;
             });
@@ -87,27 +85,30 @@ app.get('/matches', async (req, res) => {
   res.status(500).json({ error: 'All API keys failed. Try again later.' });
 });
 
-// ✅ Contest API — fetch contests using matchId
-app.get('/contests/:matchId', (req, res) => {
+
+// ✅ Contests API — now fetches from GitHub every time (live update)
+app.get('/contests/:matchId', async (req, res) => {
+  const matchId = req.params.matchId;
+  const rawUrl = 'https://raw.githubusercontent.com/dogtop65/Apikindom/main/Contest.json';
+
   try {
-    const matchId = req.params.matchId; // e.g. 74858 or "14593"
+    const response = await axios.get(rawUrl);
+    const contestData = response.data;
 
-    const contestFilePath = path.resolve(__dirname, 'Contest.json');
-    const contestData = JSON.parse(fs.readFileSync(contestFilePath, 'utf8'));
-
-    console.log('📥 matchId requested:', matchId);
+    console.log('📥 Contest API hit → matchId:', matchId);
     if (contestData[matchId]) {
       return res.json({ contests: contestData[matchId] });
     } else {
       return res.status(404).json({ error: `No contests found for matchId: ${matchId}` });
     }
+
   } catch (err) {
-    console.error('❌ Error loading Contest.json:', err.message);
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('❌ Failed to fetch Contest.json from GitHub:', err.message);
+    res.status(500).json({ error: 'Internal server error while loading contests' });
   }
 });
 
-// ✅ Start server
+// ✅ Start the server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
