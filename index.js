@@ -19,14 +19,14 @@ app.get('/', (req, res) => {
   res.send('✅ Welcome to Termux + Express + Render Cricket API Backend!');
 });
 
-// ✅ Matches API — excludes all already started matches (even 1s old)
+// ✅ Matches API — Only Future Matches (filter + sort)
 app.get('/matches', async (req, res) => {
   const endpoints = [
     'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live',
     'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/upcoming'
   ];
 
-  const now = Date.now(); // ✅ Current time in millis
+  const now = Date.now();
   let lastError = null;
 
   for (let i = 0; i < apiKeys.length; i++) {
@@ -61,7 +61,7 @@ app.get('/matches', async (req, res) => {
               if (!matchInfo || matchInfo.state === 'Complete') return false;
 
               const startTime = parseInt(matchInfo.startDate);
-              return startTime > now; // ✅ Only include if start time is in future
+              return startTime > now; // ✅ Only future matches
             });
 
             allMatches.push(...validMatches);
@@ -69,7 +69,7 @@ app.get('/matches', async (req, res) => {
         });
       });
 
-      // ✅ Sort upcoming matches by soonest first
+      // ✅ Sort ascending by time
       allMatches.sort((a, b) => {
         return parseInt(a.matchInfo.startDate) - parseInt(b.matchInfo.startDate);
       });
@@ -84,6 +84,23 @@ app.get('/matches', async (req, res) => {
 
   console.error('❌ All API keys failed');
   res.status(500).json({ error: 'All API keys failed. Try again later.' });
+});
+
+// ✅ Contest API for a specific match (Dream11 style)
+app.get('/contests/:matchKey', (req, res) => {
+  try {
+    const matchKey = req.params.matchKey.toUpperCase();
+    const contestData = JSON.parse(fs.readFileSync('./Contest.json', 'utf8'));
+
+    if (contestData[matchKey]) {
+      res.json({ contests: contestData[matchKey] });
+    } else {
+      res.status(404).json({ error: `No contests found for matchKey: ${matchKey}` });
+    }
+  } catch (err) {
+    console.error('❌ Error loading Contest.json:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // ✅ Start server
