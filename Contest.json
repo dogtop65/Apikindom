@@ -1,0 +1,15 @@
+{
+  "127472": [
+    {
+      "id": "c1",
+      "name": "Mega Contest",
+      "prize": "₹25,000",
+      "entryFee": "₹9",
+      "totalSpots": 200,
+      "spotsLeft": 20,
+      "isGuaranteed": true,
+      "isBonusAllowed": false,
+      "badge": "Mega"
+    }
+  ]
+}
