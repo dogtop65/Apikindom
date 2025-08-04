@@ -2,9 +2,23 @@ const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const mongoose = require('mongoose');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ✅ MongoDB Connection
+const mongoUri = 'mongodb+srv://L3G3ND:4aRwgDKx18yGBp6p@cluster100.lm1xasx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster100';
+
+mongoose.connect(mongoUri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('✅ MongoDB connected successfully!'))
+.catch(err => {
+  console.error('❌ MongoDB connection error:', err.message);
+  process.exit(1);
+});
 
 // ✅ Load API keys
 let apiKeys = [];
@@ -85,8 +99,7 @@ app.get('/matches', async (req, res) => {
   res.status(500).json({ error: 'All API keys failed. Try again later.' });
 });
 
-
-// ✅ Contests API — now fetches from GitHub every time (live update)
+// ✅ Contests API — currently fetching from GitHub
 app.get('/contests/:matchId', async (req, res) => {
   const matchId = req.params.matchId;
   const rawUrl = 'https://raw.githubusercontent.com/dogtop65/Apikindom/main/Contest.json';
