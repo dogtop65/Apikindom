@@ -1,19 +1,25 @@
+// models/Contest.js
 const mongoose = require('mongoose');
 
-const ContestSchema = new mongoose.Schema({
-  matchId: String,
+const contestSchema = new mongoose.Schema({
+  matchId: {
+    type: String,
+    required: true,
+    unique: true
+  },
   contests: [
     {
+      id: String,
       name: String,
       prize: String,
-      entry: String,
-      spots: String,
-      filled: String,
-      mega: Boolean,
-      guaranteed: Boolean,
-      bonus: String
+      entryFee: String,
+      totalSpots: Number,
+      spotsLeft: Number,
+      isGuaranteed: Boolean,
+      isBonusAllowed: Boolean,
+      badge: String
     }
   ]
 });
 
-module.exports = mongoose.model('Contest', ContestSchema);
+module.exports = mongoose.model('Contest', contestSchema);
