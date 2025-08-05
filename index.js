@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 // ✅ MongoDB Connection
-const mongoUri = 'mongodb+srv://L3G3ND:4aRwgDKx18yGBp6p@cluster100.lm1xasx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster100';
+const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://L3G3ND:4aRwgDKx18yGBp6p@cluster100.lm1xasx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster100';
 
 mongoose.connect(mongoUri, {
   useNewUrlParser: true,
