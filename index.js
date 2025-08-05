@@ -43,70 +43,66 @@ app.get('/', (req, res) => {
 
 // ✅ Matches API — only upcoming & live
 app.get('/matches', async (req, res) => {
+  try {
+    const matches = await fetchMatches();
+    res.json({ matches });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch matches' });
+  }
+});
+
+async function fetchMatches() {
   const endpoints = [
     'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live',
     'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/upcoming'
   ];
 
   const now = Date.now();
-  let lastError = null;
-
   for (let i = 0; i < apiKeys.length; i++) {
-    const key = apiKeys[i];
     try {
-      const [liveResponse, upcomingResponse] = await Promise.all(
-        endpoints.map(url =>
-          axios.get(url, {
-            headers: {
-              'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com',
-              'x-rapidapi-key': key
-            }
-          })
-        )
+      const key = apiKeys[i];
+      const [live, upcoming] = await Promise.all(
+        endpoints.map(url => axios.get(url, {
+          headers: {
+            'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com',
+            'x-rapidapi-key': key
+          }
+        }))
       );
 
-      console.log(`✅ Success using key ${i + 1}`);
-      const combined = [liveResponse.data, upcomingResponse.data];
+      const combined = [live.data, upcoming.data];
       const allMatches = [];
 
       combined.forEach(data => {
-        if (!data?.typeMatches) return;
-
-        data.typeMatches.forEach(type => {
-          type.seriesMatches.forEach(series => {
-            const wrapper = series.seriesAdWrapper;
-            if (!wrapper || !Array.isArray(wrapper.matches)) return;
-
-            const validMatches = wrapper.matches.filter(match => {
+        data.typeMatches?.forEach(type => {
+          type.seriesMatches?.forEach(series => {
+            const matches = series.seriesAdWrapper?.matches || [];
+            matches.forEach(match => {
               const matchInfo = match.matchInfo;
-              if (!matchInfo || matchInfo.state === 'Complete') return false;
-              const startTime = parseInt(matchInfo.startDate);
-              return startTime > now;
+              if (matchInfo?.state !== 'Complete' && parseInt(matchInfo.startDate) > now) {
+                allMatches.push({
+                  matchId: matchInfo.matchId,
+                  team1: matchInfo.team1?.teamName,
+                  team2: matchInfo.team2?.teamName,
+                  startDate: matchInfo.startDate
+                });
+              }
             });
-
-            allMatches.push(...validMatches);
           });
         });
       });
 
-      allMatches.sort((a, b) => {
-        return parseInt(a.matchInfo.startDate) - parseInt(b.matchInfo.startDate);
-      });
-
-      return res.json({ matches: allMatches });
+      return allMatches.sort((a, b) => parseInt(a.startDate) - parseInt(b.startDate));
 
     } catch (err) {
-      lastError = err;
-      console.warn(`⚠️ Key ${i + 1} failed: ${err.response?.status || err.message}`);
+      console.warn(`⚠️ API key ${i + 1} failed: ${err.message}`);
     }
   }
 
-  console.error('❌ All API keys failed');
-  res.status(500).json({ error: 'All API keys failed. Try again later.' });
-});
+  throw new Error('❌ All API keys failed');
+}
 
-
-// ✅ GET contests from MongoDB
+// ✅ Get contests for a match
 app.get('/contests/:matchId', async (req, res) => {
   const matchId = req.params.matchId;
 
@@ -115,17 +111,13 @@ app.get('/contests/:matchId', async (req, res) => {
     if (!found) {
       return res.status(404).json({ error: `No contests found for matchId: ${matchId}` });
     }
-
-    console.log('📤 Contest GET →', matchId);
     res.json({ contests: found.contests });
-
   } catch (err) {
-    console.error('❌ Error loading contests:', err.message);
-    res.status(500).json({ error: 'Internal server error while loading contests' });
+    res.status(500).json({ error: 'Error loading contests' });
   }
 });
 
-// ✅ POST contests to MongoDB
+// ✅ Manually post contests
 app.post('/contests/:matchId', async (req, res) => {
   const matchId = req.params.matchId;
   const contests = req.body.contests;
@@ -141,17 +133,46 @@ app.post('/contests/:matchId', async (req, res) => {
       { upsert: true, new: true }
     );
 
-    console.log(`✅ Contest saved for matchId: ${matchId}`);
     res.json({ message: 'Contests saved successfully', data: updated });
-
   } catch (err) {
-    console.error('❌ Failed to save contest:', err.message);
     res.status(500).json({ error: 'Error saving contest' });
   }
 });
 
 
-// ✅ Start the server
+// ✅ Auto-generate contests for all valid matches
+app.post('/generate-default-contests', async (req, res) => {
+  try {
+    const matches = await fetchMatches();
+
+    const defaultContests = [
+      { prize: "50000", entryFee: "49", totalSpots: 1000, spotsLeft: 1000, isGuaranteed: true, isBonusAllowed: true },
+      { prize: "10000", entryFee: "29", totalSpots: 500, spotsLeft: 500, isGuaranteed: true, isBonusAllowed: false },
+      { prize: "2500",  entryFee: "9",  totalSpots: 200, spotsLeft: 200, isGuaranteed: false, isBonusAllowed: true }
+    ];
+
+    let added = 0;
+    for (const match of matches) {
+      const exists = await ContestModel.findOne({ matchId: match.matchId });
+      if (!exists) {
+        await ContestModel.create({
+          matchId: match.matchId,
+          contests: defaultContests
+        });
+        console.log(`✅ Contests added for matchId: ${match.matchId}`);
+        added++;
+      }
+    }
+
+    res.json({ message: `Contests generated for ${added} new matches.` });
+
+  } catch (err) {
+    console.error('❌ Error in generating contests:', err.message);
+    res.status(500).json({ error: 'Failed to generate contests' });
+  }
+});
+
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
