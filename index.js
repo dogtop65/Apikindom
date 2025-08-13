@@ -47,10 +47,13 @@ app.get('/matches', async (req, res) => {
     const matches = await fetchMatches();
     res.json({ matches });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch matches' });
+    res.status(500).json({ error: 'Failed to fetch matches', details: err.message });
   }
 });
 
+/**
+ * Fetch matches with failover keys
+ */
 async function fetchMatches() {
   const endpoints = [
     'https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live',
@@ -58,17 +61,24 @@ async function fetchMatches() {
   ];
 
   const now = Date.now();
+
   for (let i = 0; i < apiKeys.length; i++) {
+    const key = apiKeys[i];
     try {
-      const key = apiKeys[i];
+      console.log(`🔑 Trying API key ${i + 1}/${apiKeys.length}...`);
+
       const [live, upcoming] = await Promise.all(
-        endpoints.map(url => axios.get(url, {
-          headers: {
-            'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com',
-            'x-rapidapi-key': key
-          }
-        }))
+        endpoints.map(url =>
+          axios.get(url, {
+            headers: {
+              'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com',
+              'x-rapidapi-key': key
+            }
+          })
+        )
       );
+
+      console.log(`✅ API key ${i + 1} worked!`);
 
       const combined = [live.data, upcoming.data];
       const allMatches = [];
@@ -93,13 +103,13 @@ async function fetchMatches() {
       });
 
       return allMatches.sort((a, b) => parseInt(a.startDate) - parseInt(b.startDate));
-
     } catch (err) {
       console.warn(`⚠️ API key ${i + 1} failed: ${err.message}`);
+      // try next key automatically
     }
   }
 
-  throw new Error('❌ All API keys failed');
+  throw new Error('❌ All API keys failed — check keys.json or network connection');
 }
 
 // ✅ Get contests for a match
