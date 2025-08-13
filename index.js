@@ -26,10 +26,10 @@ mongoose.connect(mongoUri, {
 // ✅ Mongoose Contest model
 const ContestModel = require('./models/Contest');
 
-// ✅ Load API keys
+// ✅ Load API keys (renamed to keyso.json)
 let apiKeys = [];
 try {
-  const keysPath = path.resolve(__dirname, 'keys.json');
+  const keysPath = path.resolve(__dirname, 'keyso.json');
   apiKeys = JSON.parse(fs.readFileSync(keysPath, 'utf8'));
 } catch (err) {
   console.error('❌ Failed to load API keys:', err.message);
@@ -138,7 +138,6 @@ app.post('/contests/:matchId', async (req, res) => {
     res.status(500).json({ error: 'Error saving contest' });
   }
 });
-
 
 // ✅ Auto-generate contests for all valid matches
 app.post('/generate-default-contests', async (req, res) => {
