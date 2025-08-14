@@ -41,7 +41,7 @@ app.get('/', (req, res) => {
   res.send('✅ Welcome to Express + Render Fantasy Sports Backend!');
 });
 
-// ✅ Matches API — only upcoming & live
+// ✅ Matches API — only upcoming & live with logos
 app.get('/matches', async (req, res) => {
   try {
     const matches = await fetchMatches();
@@ -52,7 +52,7 @@ app.get('/matches', async (req, res) => {
 });
 
 /**
- * Fetch matches with failover keys
+ * Fetch matches with failover keys + add logo URLs
  */
 async function fetchMatches() {
   const endpoints = [
@@ -90,10 +90,25 @@ async function fetchMatches() {
             matches.forEach(match => {
               const matchInfo = match.matchInfo;
               if (matchInfo?.state !== 'Complete' && parseInt(matchInfo.startDate) > now) {
+                
+                // Add logo URLs
+                const team1Logo = matchInfo.team1?.teamId 
+                  ? `https://cricbuzz-cricket.p.rapidapi.com/img/v1/i1/c${matchInfo.team1.teamId}/i.jpg` 
+                  : null;
+                const team2Logo = matchInfo.team2?.teamId 
+                  ? `https://cricbuzz-cricket.p.rapidapi.com/img/v1/i1/c${matchInfo.team2.teamId}/i.jpg` 
+                  : null;
+
                 allMatches.push({
                   matchId: matchInfo.matchId,
-                  team1: matchInfo.team1?.teamName,
-                  team2: matchInfo.team2?.teamName,
+                  team1: {
+                    name: matchInfo.team1?.teamName,
+                    logo: team1Logo
+                  },
+                  team2: {
+                    name: matchInfo.team2?.teamName,
+                    logo: team2Logo
+                  },
                   startDate: matchInfo.startDate
                 });
               }
